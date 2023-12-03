@@ -1,4 +1,5 @@
 import discord
+import config
 from discord.ext import commands
 
 intents = discord.Intents.all()
@@ -48,4 +49,4 @@ async def on_message(message):
 
     await client.process_commands(message)
 
-client.run("MTE2NzQ2ODk1MDg4NDQ2MjcwNg.G0H8UI.hSY0wwV6Y86v1cQaZ1ue-fPv-Z6QLpUNcLNtRQ")
+client.run(config.Token)

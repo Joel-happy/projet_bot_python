@@ -1,5 +1,3 @@
 config.env
-.idea/
-*.iml
-*.ipr
-*.iws
+.idea/*
+config.py
