@@ -1,9 +1,10 @@
 from datetime import datetime
+import json
 class Command:#commandes
     def __init__(self, user, command, timestamp):
         self.user = user
         self.command = command
-        self.formatted_timestamp = self.format_date(timestamp)
+        self.formatted_timestamp = timestamp if isinstance(timestamp, str) else self.format_date(timestamp)
         self.next_node = None
         self.previous_node = None
 
@@ -26,7 +27,7 @@ class History:#historique
             current_node = current_node.next_node
         current_node.next_node = new_command
         new_command.previous_node=current_node
-        self.current_node=new_command
+
 
 
     def next_command(self):
@@ -71,6 +72,32 @@ class History:#historique
             current_node = current_node.next_node
         return user_commands
 
-# La ligne `self.size += 1` n'est pas nécessaire si vous n'avez pas de variable `size`
-            # Si vous souhaitez garder une trace de la taille, assurez-vous d'ajouter une variable `size` dans __init__ et décommentez cette ligne.
-            # self.size += 1
+    def save_history(self, filepath):
+        history_to_save = []
+        current_node = self.first_node
+        while current_node:
+            history_to_save.append({
+                'user': current_node.user,
+                'command': current_node.command,
+                'formatted_timestamp': current_node.formatted_timestamp
+            })
+            current_node = current_node.next_node
+
+        with open(filepath, 'w') as file:
+            json.dump(history_to_save, file)
+
+    @staticmethod
+    def load_history(filepath):
+        try:
+            with open(filepath, 'r') as file:
+                data = json.load(file)
+                if not data:  # Si le fichier est vide ou le contenu n'est pas valide
+                    return History()
+                history_instance = History()
+                for item in data:
+                    timestamp = datetime.strptime(item['formatted_timestamp'],"%d/%m/%Y %H:%M:%S")
+                    history_instance.append(item['user'], item['command'], timestamp)
+                    history_instance.current_node = history_instance.first_node
+                return history_instance
+        except FileNotFoundError:
+            return History()  # Retourne une instance vide si le fichier n'existe pas

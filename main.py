@@ -9,8 +9,14 @@ from discord.ext import commands
 intents = discord.Intents.all()
 
 client = commands.Bot(command_prefix="!", intents=intents)
+
+@client.event
+async def on_ready():
+    global command_history
+    print("Le bot est prêt !")
+    command_history = tache1.History.load_history('historique_commandes.json')
+
 # Création de l'instance de l'historique des commandes
-command_history = tache1.History()
 discussion_node = {}
 
 def enregistrer_commande(ctx):
@@ -18,18 +24,13 @@ def enregistrer_commande(ctx):
     command_text = ctx.message.content
     timestamp = ctx.message.created_at
     command_history.append(user, command_text, timestamp)
-    print(f"Je viens d'enregistrer une commande")
+    command_history.save_history('historique_commandes.json')
 @client.command(name="Hello")
 async def delete(ctx):
-    messages = await ctx.channel.history(limit=10)
-
-    for each_message in messages:
-        await each_message.delete()
+    messages = await ctx.channel.history(limit=150).flatten()
+    await ctx.channel.delete_messages(messages)
 
 
-@client.event
-async def on_ready():
-    print("Le bot est prêt !")
 
 
 # @client.event
@@ -71,12 +72,8 @@ async def prev_command(ctx):
  #vider l'historique
 @client.command(name="vider_historique")
 async def vider_historique(ctx):
-    # Enregistrement de la commande
-
-    # execution de la commande
     command_history.clear_history()
     enregistrer_commande(ctx)
-    #reponse
     await ctx.send("L'historique a été vidé.")
 @client.command(name="derniere_commande")
 async def derniere_commande(ctx):
@@ -94,7 +91,7 @@ async def derniere_commande(ctx):
 async def commandes_utilisateur(ctx, member: discord.Member):
     username = member.name
     commands = command_history.get_commands_by_user(username)
-
+    enregistrer_commande(ctx)
     if commands:
         response = "\n".join(commands)
         await ctx.send(f"Commandes de {member.mention}:\n{response}")
@@ -107,6 +104,7 @@ async def commandes_utilisateur(ctx, member: discord.Member):
 @client.command(name="request_history_access")
 async def request_history_access(ctx):
     user_id = ctx.author.id
+    enregistrer_commande(ctx)
     if user_id != queue:
         queue.append(user_id)
         await ctx.send("Vous avez été ajouté à la file d'attente pour accéder à l'historique.")
@@ -117,6 +115,7 @@ async def request_history_access(ctx):
 async def request_access_discord(ctx):
     user_id = ctx.author.id
     position = tache2.request_access(user_id)
+    enregistrer_commande(ctx)
     if position != -1:
         await ctx.send(f"Votre position dans la file d'attente est {position}.")
     else:
@@ -125,6 +124,7 @@ async def request_access_discord(ctx):
 @client.command(name="release_access")
 async def release_access_discord(ctx):
     user_id = ctx.author.id
+    enregistrer_commande(ctx)
     if tache2.release_access(user_id):
         await ctx.send("Vous avez libéré l'accès à l'historique.")
         next_user_id = tache2.get_next_user()
@@ -138,12 +138,14 @@ async def release_access_discord(ctx):
 @client.command(name="start_discussion")
 async def start_discussion(ctx):
     user_id = ctx.author.id
+    enregistrer_commande(ctx)
     discussion_node[user_id] = tache3.root
     await ctx.send(discussion_node[user_id].question)
 
 @client.command(name="answer")
 async def answer(ctx, *, reponse):
     user_id = ctx.author.id
+    enregistrer_commande(ctx)
     if user_id in discussion_node:
         node_actuel = discussion_node[user_id]
         reponse = reponse.lower()  # Convertir la réponse en minuscules
@@ -162,6 +164,7 @@ async def answer(ctx, *, reponse):
 @client.command(name="reset")
 async def reset(ctx):
     user_id = ctx.author.id
+    enregistrer_commande(ctx)
     discussion_node[user_id] = tache3.root  # Réinitialiser le nœud de discussion à la racine
     await ctx.send("La discussion a été réinitialisée. " + tache3.root.question)
 
@@ -173,6 +176,7 @@ async def on_command_error(ctx, error):
 
 @client.command(name="speak_about")
 async def speak_about(ctx, *, sujet):
+    enregistrer_commande(ctx)
     if tache3.search(tache3.root, sujet):
         await ctx.send(f"Oui, je peux parler de {sujet}.")
     else:
