@@ -7,17 +7,19 @@ class Command:#commandes
         self.formatted_timestamp = timestamp if isinstance(timestamp, str) else self.format_date(timestamp)
         self.next_node = None
         self.previous_node = None
-        self.histories = {}
+
     def format_date(self,timestamp):
         return timestamp.strftime("%d/%m/%Y %H:%M:%S")
+
+
 class History:#historique
     def __init__(self):
         self.first_node = None
         self.current_node = None
         self.size = 0
         self.user_pointers = {}
-    def append(self, user,command,formatted_timestamp):
-        new_command=Command(user,command,formatted_timestamp)
+    def append(self, user_id,command,formatted_timestamp):
+        new_command=Command(user_id,command,formatted_timestamp)
         #Implémentation de l'ajout d'un élément
         if self.first_node == None:
             self.first_node = new_command
@@ -29,13 +31,7 @@ class History:#historique
         current_node.next_node = new_command
         new_command.previous_node=current_node
 
-
-
     def next_command(self, user_id):
-        # Assurez-vous que l'utilisateur est dans le dictionnaire
-        if user_id not in self.user_pointers:
-            self.user_pointers[user_id] = self.first_node
-
         # Obtenez le pointeur actuel pour cet utilisateur
         current_node = self.user_pointers[user_id]
 
@@ -47,8 +43,10 @@ class History:#historique
 
     def prev_command(self, user_id):
         # Vérifiez si l'utilisateur a déjà un pointeur, sinon initialisez-le
-        if user_id not in self.user_pointers:
-            self.user_pointers[user_id] = self.first_node
+        def prev_command(self, user_id):
+            if user_id in self.user_histories:
+                return self.user_histories[user_id].prev_command()
+            return None
 
         current_node = self.user_pointers[user_id]
 
@@ -89,21 +87,23 @@ class History:#historique
                 user_commands.append(command_info)
             current_node = current_node.next_node
         return user_commands
+
+
     #Tâche 5
     #où se déroule la sauvegarde de l'historique
     def save_history(self, filepath):
-        history_to_save = []
-        current_node = self.first_node
-        while current_node:
-            history_to_save.append({
-                'user': current_node.user,
-                'command': current_node.command,
-                'formatted_timestamp': current_node.formatted_timestamp
+        history_data = []
+        current = self.first_node
+        while current:
+            history_data.append({
+                'user': current.user,
+                'command': current.command,
+                'formatted_timestamp': current.formatted_timestamp
             })
-            current_node = current_node.next_node
+            current = current.next_node
 
         with open(filepath, 'w') as file:
-            json.dump(history_to_save, file)
+            json.dump(history_data, file, indent=4)
 
     #le chargement de l'historique
     @staticmethod
@@ -111,13 +111,11 @@ class History:#historique
         try:
             with open(filepath, 'r') as file:
                 data = json.load(file)
-                if not data:  # Si le fichier est vide ou le contenu n'est pas valide
-                    return History()
                 history_instance = History()
                 for item in data:
-                    timestamp = datetime.strptime(item['formatted_timestamp'],"%d/%m/%Y %H:%M:%S")
-                    history_instance.append(item['user'], item['command'], timestamp)
-                    history_instance.current_node = history_instance.first_node
+                    history_instance.append(item['user'], item['command'], item['formatted_timestamp'])
                 return history_instance
         except FileNotFoundError:
-            return History()  # Retourne une instance vide si le fichier n'existe pas
+            return History()
+
+

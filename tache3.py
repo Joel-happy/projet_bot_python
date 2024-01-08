@@ -44,3 +44,12 @@ def search(node, sujet):
         if search(suivant, sujet):
             return True
     return False
+
+#tâche 4
+class UserDiscussionState:
+    def __init__(self):
+        self.current_node = None  # L'état actuel de la discussion
+
+    def update_state(self, new_node):
+        self.current_node = new_node
+

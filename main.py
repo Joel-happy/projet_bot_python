@@ -15,7 +15,7 @@ async def on_ready():
     global command_history
     print("Le bot est prêt !")
     command_history = tache1.History.load_history('historique_commandes.json')
-
+user_discussion_states = {}
 # Création de l'instance de l'historique des commandes
 discussion_node = {}
 
@@ -46,83 +46,105 @@ async def afficher_historique(ctx):
     user_id = ctx.author.id
     if tache2.is_user_in_queue_front(user_id):
         historiq = command_history.show_history()
-        await ctx.send(f"Historique des commandes :\n{historiq}")
+        if historiq:
+            await ctx.send(f"Historique des commandes :\n{historiq}")
+        else:
+            # Informez l'utilisateur que l'historique est vide
+            await ctx.send("L'historique est actuellement vide.")
     else:
-        await ctx.send("L'historique est vide.")
+        await ctx.send("Vous n'êtes pas en tête de la liste d'attente pour accéder à l'historique.")
     enregistrer_commande(ctx)
 @client.command(name="next")
 async def next_command(ctx):
-     user_id = str(ctx.author.id)
-     next_command=command_history.next_command(user_id)
-     enregistrer_commande(ctx)
-     if next_command:
-         await ctx.send(f"Commande suivante : {next_command}")
-     else:
-         await ctx.send("Vous êtes à la fin de l'historique.")
+    user_id = str(ctx.author.id)
+    if tache2.is_user_in_queue_front(user_id):
+        next_command = command_history.next_command(user_id)
+        if next_command:
+            await ctx.send(f"Commande : {next_command}")
+        else:
+            await ctx.send("Vous êtes à la fin de l'historique.")
+    else:
+        await ctx.send("Vous devez être en tête de la file d'attente pour accéder à l'historique.")
+    enregistrer_commande(ctx)
+
 
 @client.command(name="prev")
 async def prev_command(ctx):
     user_id = str(ctx.author.id)
-    prev_command=command_history.prev_command(user_id)
-    enregistrer_commande(ctx)
-    if prev_command:
-        await ctx.send(f"Commande précédente : {prev_command}")
+    if tache2.is_user_in_queue_front(user_id):
+        prev_command = command_history.prev_command(user_id)
+        if prev_command:
+            await ctx.send(f"Commande : {prev_command}")
+        else:
+            await ctx.send("Vous êtes au début de l'historique.")
     else:
-        await ctx.send("Vous êtes au début de l'historique.")
+        await ctx.send("Vous devez être en tête de la file d'attente pour accéder à l'historique.")
+    enregistrer_commande(ctx)
+
  #vider l'historique
 @client.command(name="vider_historique")
 async def vider_historique(ctx):
-    command_history.clear_history()
+    user_id = str(ctx.author.id)
+    if tache2.is_user_in_queue_front(user_id):
+        command_history.clear_history()
+        await ctx.send("L'historique a été vidé.")
+    else:
+        await ctx.send("Vous devez être en tête de la file d'attente pour vider l'historique.")
     enregistrer_commande(ctx)
-    await ctx.send("L'historique a été vidé.")
+
 @client.command(name="derniere_commande")
 async def derniere_commande(ctx):
-    # execution de la commande
-    last_command = command_history.get_last()
-    enregistrer_commande(ctx)
-    # reponse
-    if last_command is not None:
-        await ctx.send(f"La dernière commande était : {last_command}")
+    user_id = str(ctx.author.id)
+    if tache2.is_user_in_queue_front(user_id):
+        last_command = command_history.get_last()
+        if last_command:
+            await ctx.send(f"La dernière commande était : {last_command}")
+        else:
+            await ctx.send("Aucune commande enregistrée.")
     else:
-        await ctx.send("Aucune commande enregistrée.")
+        await ctx.send("Vous devez être en tête de la file d'attente pour voir la dernière commande.")
+    enregistrer_commande(ctx)
+
 @client.command(name="commandes")
 async def commandes_utilisateur(ctx, member: discord.Member):
-    username = member.name
-    commands = command_history.get_commands_by_user(username)
-    enregistrer_commande(ctx)
-    if commands:
-        response = "\n".join(commands)
-        await ctx.send(f"Commandes de {member.mention}:\n{response}")
+    user_id = str(ctx.author.id)
+    if tache2.is_user_in_queue_front(user_id):
+        username = member.name
+        commands = command_history.get_commands_by_user(username)
+        if commands:
+            response = "\n".join(commands)
+            await ctx.send(f"Commandes de {member.mention}:\n{response}")
+        else:
+            await ctx.send(f"Aucune commande trouvée pour {member.mention}.")
     else:
-        await ctx.send(f"Aucune commande trouvée pour {member.mention}.")
+        await ctx.send("Vous devez être en tête de la file d'attente pour voir la dernière commande.")
     enregistrer_commande(ctx)
+
 
 #tâche 2
 
 @client.command(name="acceder_historique")
 async def request_history_access(ctx):
     user_id = ctx.author.id
-    enregistrer_commande(ctx)
     if user_id != tache2.queue:
         tache2.queue.append(user_id)
         await ctx.send("Vous avez été ajouté à la file d'attente pour accéder à l'historique.")
     else:
         await ctx.send("Vous êtes déjà dans la file d'attente.")
-
-@client.command(name="")
+    enregistrer_commande(ctx)
+@client.command(name="position")
 async def request_access_discord(ctx):
     user_id = ctx.author.id
     position = tache2.request_access(user_id)
-    enregistrer_commande(ctx)
     if position != -1:
         await ctx.send(f"Votre position dans la file d'attente est {position}.")
     else:
         await ctx.send("Vous êtes déjà dans la file d'attente.")
+    enregistrer_commande(ctx)
 
 @client.command(name="liberer_historique")
 async def release_access_discord(ctx):
     user_id = ctx.author.id
-    enregistrer_commande(ctx)
     if tache2.release_access(user_id):
         await ctx.send("Vous avez libéré l'accès à l'historique.")
         next_user_id = tache2.get_next_user()
@@ -130,55 +152,59 @@ async def release_access_discord(ctx):
             await ctx.send(f"<@{next_user_id}> peut maintenant accéder à l'historique.")
     else:
         await ctx.send("Vous ne pouvez pas libérer l'accès en ce moment.")
-
+    enregistrer_commande(ctx)
 #tache 3
 
 @client.command(name="start_discussion")
 async def start_discussion(ctx):
     user_id = ctx.author.id
+    if user_id not in user_discussion_states:
+        user_discussion_states[user_id] = UserDiscussionState()
+    user_discussion_states[user_id].update_state(tache3.root)
+    await ctx.send(tache3.root.question)
     enregistrer_commande(ctx)
-    discussion_node[user_id] = tache3.root
-    await ctx.send(discussion_node[user_id].question)
-
 @client.command(name="answer")
 async def answer(ctx, *, reponse):
     user_id = ctx.author.id
-    enregistrer_commande(ctx)
-    if user_id in discussion_node:
-        node_actuel = discussion_node[user_id]
-        reponse = reponse.lower()  # Convertir la réponse en minuscules
-
-        # Recherche de la réponse correspondante (également en minuscules)
-        reponse_trouvee = next((r for r in node_actuel.reponse if r.lower() == reponse), None)
-
+    if user_id in user_discussion_states:
+        current_state = user_discussion_states[user_id]
+        node_actuel = current_state.current_node
+        reponse_trouvee = node_actuel.reponse.get(reponse.lower(), None)
         if reponse_trouvee:
-            discussion_node[user_id] = node_actuel.reponse[reponse_trouvee]
-            await ctx.send(discussion_node[user_id].question)
+            user_discussion_states[user_id].update_state(reponse_trouvee)
+            await ctx.send(reponse_trouvee.question)
         else:
             await ctx.send("Je ne comprends pas cette réponse. Veuillez choisir une option valide.")
     else:
         await ctx.send("Veuillez d'abord démarrer la discussion avec !start_discussion.")
+    enregistrer_commande(ctx)
 
 @client.command(name="reset")
 async def reset(ctx):
     user_id = ctx.author.id
-    enregistrer_commande(ctx)
-    discussion_node[user_id] = tache3.root  # Réinitialiser le nœud de discussion à la racine
+    if user_id in user_discussion_states:
+        user_discussion_states[user_id].update_state(tache3.root)
     await ctx.send("La discussion a été réinitialisée. " + tache3.root.question)
+    enregistrer_commande(ctx)
 
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.send("Je ne connais pas cette commande. Veuillez rentrer une autre.")
-        enregistrer_commande(ctx)
+    enregistrer_commande(ctx)
 
 @client.command(name="speak_about")
 async def speak_about(ctx, *, sujet):
-    enregistrer_commande(ctx)
     if tache3.search(tache3.root, sujet):
         await ctx.send(f"Oui, je peux parler de {sujet}.")
     else:
         await ctx.send(f"Non, je ne traite pas le sujet de {sujet}.")
+    enregistrer_commande(ctx)
 
+#tâche 4
+def update_discussion_state(user_id, new_node):
+    if user_id not in user_discussion_states:
+        user_discussion_states[user_id] = UserDiscussionState()
+    user_discussion_states[user_id].update_state(new_node)
 
 client.run(config.Token)
