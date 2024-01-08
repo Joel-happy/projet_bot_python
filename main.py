@@ -30,9 +30,6 @@ async def delete(ctx):
     messages = await ctx.channel.history(limit=150).flatten()
     await ctx.channel.delete_messages(messages)
 
-
-
-
 # @client.event
 # async def on_typing(channel, user, when):
 #     await channel.send(user.name + " is typing")
@@ -43,27 +40,30 @@ async def on_member_join(member):
     general_channel = client.get_channel()
     await general_channel.send("Bienvenue sur le serveur ! " + member.name)
 
-#
+
 @client.command(name="afficher_historique")
 async def afficher_historique(ctx):
-    historiq = command_history.show_history()
-    enregistrer_commande(ctx)
-    if historiq:
+    user_id = ctx.author.id
+    if tache2.is_user_in_queue_front(user_id):
+        historiq = command_history.show_history()
         await ctx.send(f"Historique des commandes :\n{historiq}")
     else:
         await ctx.send("L'historique est vide.")
+    enregistrer_commande(ctx)
 @client.command(name="next")
 async def next_command(ctx):
-     next_command=command_history.next_command()
+     user_id = str(ctx.author.id)
+     next_command=command_history.next_command(user_id)
      enregistrer_commande(ctx)
      if next_command:
-         await ctx.send(f"Prochaine commande : {next_command}")
+         await ctx.send(f"Commande suivante : {next_command}")
      else:
          await ctx.send("Vous êtes à la fin de l'historique.")
 
 @client.command(name="prev")
 async def prev_command(ctx):
-    prev_command=command_history.prev_command()
+    user_id = str(ctx.author.id)
+    prev_command=command_history.prev_command(user_id)
     enregistrer_commande(ctx)
     if prev_command:
         await ctx.send(f"Commande précédente : {prev_command}")
@@ -77,8 +77,6 @@ async def vider_historique(ctx):
     await ctx.send("L'historique a été vidé.")
 @client.command(name="derniere_commande")
 async def derniere_commande(ctx):
-    # Enregistrement de la commande
-
     # execution de la commande
     last_command = command_history.get_last()
     enregistrer_commande(ctx)
@@ -101,17 +99,17 @@ async def commandes_utilisateur(ctx, member: discord.Member):
 
 #tâche 2
 
-@client.command(name="request_history_access")
+@client.command(name="acceder_historique")
 async def request_history_access(ctx):
     user_id = ctx.author.id
     enregistrer_commande(ctx)
-    if user_id != queue:
-        queue.append(user_id)
+    if user_id != tache2.queue:
+        tache2.queue.append(user_id)
         await ctx.send("Vous avez été ajouté à la file d'attente pour accéder à l'historique.")
     else:
         await ctx.send("Vous êtes déjà dans la file d'attente.")
 
-@client.command(name="request_access")
+@client.command(name="")
 async def request_access_discord(ctx):
     user_id = ctx.author.id
     position = tache2.request_access(user_id)
@@ -121,7 +119,7 @@ async def request_access_discord(ctx):
     else:
         await ctx.send("Vous êtes déjà dans la file d'attente.")
 
-@client.command(name="release_access")
+@client.command(name="liberer_historique")
 async def release_access_discord(ctx):
     user_id = ctx.author.id
     enregistrer_commande(ctx)

@@ -1,3 +1,4 @@
 config.env
 .idea/
 config.py
+historique_commandes.json

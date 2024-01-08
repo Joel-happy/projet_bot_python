@@ -12,5 +12,7 @@ def release_access(user_id):
         return True
     return False
 
+def is_user_in_queue_front(user_id):
+    return queue and queue[0] == user_id
 def get_next_user():
     return queue[0] if queue else None
